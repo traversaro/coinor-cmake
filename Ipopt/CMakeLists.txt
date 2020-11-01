@@ -21,8 +21,8 @@ option(IPOPT_ENABLE_LINEARSOLVERLOADER  "Build the dynamic linear solver loader"
 option(IPOPT_ENABLE_PARDISOSOLVERLOADER "Build the dynamic pardiso solver loader" OFF)
 option(IPOPT_ENABLE_INEXACT             "Build the inexact solver" OFF)
 
-set(COIN_IPOPT_CHECKLEVEL "0" CACHE STRING "The debug sanity check level of IpOpt (0 if no test)")
-set(COIN_IPOPT_VERBOSITY  "0" CACHE STRING "The debug verbosity level of IpOpt (0 if no output)")
+set(IPOPT_CHECKLEVEL "0" CACHE STRING "The debug sanity check level of IpOpt (0 if no test)")
+set(IPOPT_VERBOSITY  "0" CACHE STRING "The debug verbosity level of IpOpt (0 if no output)")
 
 set(COIN_HAS_MUMPS OFF CACHE BOOL "Enable the Mumps linear solver (default solver enabled)" FORCE)
 set(COIN_HAS_MUMPS_INCLUDE_PATH "None" CACHE PATH "The MUMPS linear solver include Path")
@@ -45,6 +45,7 @@ option(COIN_COMPILE_WARNINGS         "Activate a set of warning options" OFF)
 option(COIN_COMPILE_CXX11            "Activate C++11 compilation" OFF)
 option(COIN_TESTS_DISABLE_TIMEOUT    "Disable the timeout of the tests" OFF)
 option(COIN_ENABLE_DOXYGEN           "Enable the build of doxygen documentation" OFF)
+option(COIN_LINK_GFORTRAN            "Link examples against gfortran" ON)
 
 option(USE_PROCESSOR_EXTENSIONS      "Use sse / mmx / avx extensions during compilation" OFF)
 option(COIN_ENABLE_COMPAT            "Enable libc compatibility" OFF)
@@ -71,6 +72,7 @@ mark_as_advanced(ENABLE_SHARED_LIBRARIES
                  COIN_HAS_WSMP
                  COIN_HAS_WSMP_INCLUDE_PATH
                  COIN_HAS_WSMP_LIBRARY_PATH
+                 COIN_LINK_GFORTRAN
 		 COIN_DIR
 		 IPOPT_HAS_PARDISO_MKL
 		 IPOPT_HAS_PARDISO_OLDINTERFACE
@@ -313,8 +315,8 @@ if (NOT CMAKE_Fortran_COMPILER)
   message(STATUS "WARNING: fortran compiler not found. Disabling f77/f95 bindings")
 endif ()
 
-# Define FORTRAN_INTEGER_TYPE for Ipopt.
-set(FORTRAN_INTEGER_TYPE int)
+# Define IPOPT_FORTRAN_INTEGER_TYPE for Ipopt.
+set(IPOPT_FORTRAN_INTEGER_TYPE int)
 
 #-----------------------------------------------------------------------------
 # Detect name mangling convention used between Fortran and C
@@ -332,17 +334,17 @@ if (CMAKE_Fortran_COMPILER)
   file(STRINGS ${CMAKE_BINARY_DIR}/F77Mangle.h CONTENTS REGEX "F77_GLOBAL\\(.*,.*\\) +(.*)")
   string(REGEX MATCH "F77_GLOBAL\\(.*,.*\\) +(.*)" RESULT ${CONTENTS})
   set(F77_FUNC         "F77_FUNC(name,NAME) ${CMAKE_MATCH_1}")
-  set(COIN_LAPACK_FUNC "COIN_LAPACK_FUNC(name,NAME) ${CMAKE_MATCH_1}")
+  set(IPOPT_LAPACK_FUNC "IPOPT_LAPACK_FUNC(name,NAME) ${CMAKE_MATCH_1}")
   
   file(STRINGS ${CMAKE_BINARY_DIR}/F77Mangle.h CONTENTS REGEX "F77_GLOBAL_\\(.*,.*\\) +(.*)")
   string(REGEX MATCH "F77_GLOBAL_\\(.*,.*\\) +(.*)" RESULT ${CONTENTS})
   set(F77_FUNC_         "F77_FUNC_(name,NAME) ${CMAKE_MATCH_1}")
-  set(COIN_LAPACK_FUNC_ "COIN_LAPACK_FUNC_(name,NAME) ${CMAKE_MATCH_1}")
+  set(IPOPT_LAPACK_FUNC_ "IPOPT_LAPACK_FUNC_(name,NAME) ${CMAKE_MATCH_1}")
 else ()
   set(F77_FUNC          "F77_FUNC(name,NAME)  name##_")
   set(F77_FUNC_         "F77_FUNC_(name,NAME) name##__")
-  set(COIN_LAPACK_FUNC  "COIN_LAPACK_FUNC(name,NAME)  name##_")
-  set(COIN_LAPACK_FUNC_ "COIN_LAPACK_FUNC_(name,NAME) name##__")
+  set(IPOPT_LAPACK_FUNC  "IPOPT_LAPACK_FUNC(name,NAME)  name##_")
+  set(IPOPT_LAPACK_FUNC_ "IPOPT_LAPACK_FUNC_(name,NAME) name##__")
 endif ()
 
 set(F77_DUMMY_MAIN "" CACHE STRING "Define to dummy 'main' function (if any) required to link to the Fortran libraries.")
@@ -562,11 +564,11 @@ endif ()
 
 check_symbol_exists(clock_gettime time.h     HAVE_CLOCK_GETTIME)
 check_symbol_exists(gettimeofday  sys/time.h HAVE_GETTIMEOFDAY)
-
-check_function_exists(dran48     HAVE_DRAND48)
-check_function_exists(rand       HAVE_RAND)
+check_symbol_exists(drand48 stdlib.h IPOPT_HAS_DRAND48)
+# To avoid problems in Windows checks, always assume that rand exists
+set(IPOPT_HAS_RAND 1 CACHE INTERNAL "Assume that rand is defined")
 check_function_exists(snprintf   HAVE_SNPRINTF)
-check_function_exists(std::rand  HAVE_STD__RAND)
+check_cxx_symbol_exists(std::rand cstdlib HAVE_STD__RAND)
 check_function_exists(va_copy    HAVE_VA_COPY)
 check_function_exists(vsnprintf  HAVE_VSNPRINTF)
 check_function_exists(_snprintf  HAVE__SNPRINTF)
@@ -642,19 +644,17 @@ if (COIN_ENABLE_DOWNLOAD_METIS) # METIS found
 endif ()
 
 if (IPOPT_ENABLE_LINEARSOLVERLOADER OR IPOPT_ENABLE_PARDISOSOLVERLOADER)
-  add_definitions(-DHAVE_LINEARSOLVERLOADER)
-  
+  add_definitions(-DIPOPT_HAS_LINEARSOLVERLOADER)
+
   find_package(DL)
 endif ()
 
 if (IPOPT_HAS_MUMPS)
-  add_definitions(-DHAVE_MUMPS)
-  
   set(COINHSL_HAS_MUMPS ON)
 endif ()
 
 if (IPOPT_HAS_WSMP)
-  add_definitions(-DHAVE_WSMP)
+  add_definitions(-DIPOPT_HAS_WSMP)
   
   set(COINHSL_HAS_WSMP ON)
 endif ()
@@ -741,5 +741,5 @@ message(STATUS "${color_cyan}Compilation definitions:${color_reset} ${ALL_DEFS}"
 # Install part
 #
 
-install(FILES LICENSE README 
+install(FILES LICENSE README.md AUTHORS
 	DESTINATION share/coin/doc/Ipopt/)
