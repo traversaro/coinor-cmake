@@ -38,6 +38,7 @@ add_definitions(-DIPOPTLIB_BUILD)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.h.in       ${CMAKE_BINARY_DIR}/Ipopt/include/config.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config_ipopt.h.in ${CMAKE_BINARY_DIR}/Ipopt/include/config_ipopt.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config_ipopt.h.in ${CMAKE_BINARY_DIR}/Ipopt/include/install/IpoptConfig.h)
 
 #
 # pkg-config file generation
@@ -950,10 +951,11 @@ set(ALL_HDRS ${LINALG_HDRS}
 	     ${INTERFACES_HDRS}
 	     ${COMMON_HDRS}
 	     ${ALGORITHMS_HDRS}
-	     ${LINEARSOLVERS_HDRS})
+	     ${LINEARSOLVERS_HDRS}
+             ${CMAKE_BINARY_DIR}/Ipopt/include/install/IpoptConfig.h)
 
 install(FILES ${ALL_HDRS} 
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/coin)
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/coin-or)
 
 install(TARGETS libipopt
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
