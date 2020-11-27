@@ -302,7 +302,7 @@ else ()
   add_library(libipopt STATIC ${IPOPT_SRC_LIST})
 endif ()
 set_target_properties(libipopt PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
+set_target_properties(libipopt PROPERTIES OUTPUT_NAME "ipopt-3")
 
 if (COIN_COMPILE_LTO)
   set_target_properties(libipopt PROPERTIES INTERPROCEDURAL_OPTIMIZATION true)
